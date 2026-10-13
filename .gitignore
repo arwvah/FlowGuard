@@ -1,0 +1,19 @@
+.venv/
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+dist/
+build/
+data/
+*.sqlite*
+*.pcap
+.coverage
+
+
+# Local planning and private configuration
+.arena/
+.env
+.env.*
+.streamlit/secrets.toml
+Build **FlowGuard*.md

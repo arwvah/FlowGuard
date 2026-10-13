@@ -1,0 +1,35 @@
+# Fixed event-time windows, in seconds.
+window_seconds = 10.0
+min_baseline_windows = 6
+spike_factor = 3.0
+z_score = 4.0
+min_packet_rate = 20.0
+min_byte_rate = 10000.0
+persistence_windows = 2
+cooldown_seconds = 30.0
+scan_ports = 20
+syn_min_packets = 40
+syn_ratio = 0.8
+unexpected_min_packets = 3
+# Empty allowlists disable the corresponding rule. Protocol names are case-sensitive.
+allowed_protocols = ["TCP", "UDP", "ICMP", "ICMPv6", "ARP"]
+allowed_ports = [53, 80, 443]
+max_sources = 2048
+max_ports_per_source = 1024
+max_cooldown_keys = 8192
+# Global per-table retention for metrics and alerts; oldest rows are deleted.
+max_records = 100000
+# New rules: counts per source per window; zero disables each rule.
+host_sweep_hosts = 20
+tcp_flags_min_packets = 3
+dns_burst_packets = 200
+max_hosts_per_source = 256
+# Exclude likely replies from allowed service ports from port rules only.
+# This is a heuristic, not stateful connection tracking; false disables it.
+ignore_service_replies = true
+# ICMPv4/v6 echo requests only. Zero disables the rule.
+icmp_echo_packets = 100
+# Require both a reset count and a fraction of the source's TCP packets.
+# Zero rst_min_packets disables the rule; rst_ratio must be in (0, 1].
+rst_min_packets = 50
+rst_ratio = 0.8
