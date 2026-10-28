@@ -12,6 +12,8 @@ class PacketMeta:
     destination_port: int | None = None
     tcp_flags: int = 0
     icmp_type: int | None = None
+    # Length only: FlowGuard never retains the queried DNS name.
+    dns_query_length: int | None = None
 
 
 @dataclass
@@ -27,6 +29,7 @@ class SourceStats:
     dns_packets: int = 0
     rst_packets: int = 0
     echo_requests: int = 0
+    long_dns_queries: int = 0
 
 
 @dataclass

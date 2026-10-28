@@ -2,7 +2,7 @@ import struct
 from dataclasses import replace
 
 import pytest
-from scapy.all import ARP, ICMP, IP, TCP, UDP, Ether, IPv6, PcapWriter, Raw
+from scapy.all import ARP, DNS, DNSQR, ICMP, IP, TCP, UDP, Ether, IPv6, PcapWriter, Raw
 from scapy.layers.inet6 import ICMPv6EchoRequest, IPv6ExtHdrHopByHop
 
 from flowguard.config import Config
@@ -35,6 +35,16 @@ def test_extract_protocols_without_payload(packet, protocol, port):
     assert metadata.timestamp == 123.25
     assert metadata.size == len(packet)
     assert not hasattr(metadata, "payload")
+
+
+def test_dns_query_metadata_retains_length_not_name():
+    name = f"{'a' * 60}.{'b' * 30}.example.test"
+    request = Ether() / IP() / UDP(sport=53000, dport=53) / DNS(rd=1, qd=DNSQR(qname=name))
+    response = Ether() / IP() / UDP(sport=53, dport=53000) / DNS(qr=1, qd=DNSQR(qname=name))
+    metadata = extract(request)
+    assert metadata.dns_query_length == len(name)
+    assert name not in repr(metadata)
+    assert extract(response).dns_query_length is None
 
 
 def meta(timestamp, source="host", port=443, flags=0):

@@ -83,6 +83,11 @@ class Aggregator:
             source.suspicious_tcp_packets += bool(control in (0, 1, 0x29) or (flags & 2 and flags & 5))
         if packet.protocol == "UDP" and packet.destination_port == 53:
             source.dns_packets += 1
+        if (
+            packet.dns_query_length is not None
+            and packet.dns_query_length >= self.config.dns_long_query_length
+        ):
+            source.long_dns_queries += 1
         if (packet.protocol == "ICMP" and packet.icmp_type == 8) or (
             packet.protocol == "ICMPv6" and packet.icmp_type == 128
         ):

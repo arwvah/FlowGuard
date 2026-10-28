@@ -32,6 +32,8 @@ class Config:
     icmp_echo_packets: int = 100
     rst_min_packets: int = 50
     rst_ratio: float = 0.8
+    dns_long_query_length: int = 70
+    dns_long_query_packets: int = 5
 
     def __post_init__(self):
         ints = {f.name for f in fields(self) if f.type is int}
@@ -53,6 +55,7 @@ class Config:
                 "dns_burst_packets",
                 "icmp_echo_packets",
                 "rst_min_packets",
+                "dns_long_query_packets",
             }
             if value < 0 or (name not in zero_allowed and value == 0):
                 raise ValueError(f"{name} must be positive (rule thresholds and cooldown may be zero)")
@@ -62,6 +65,8 @@ class Config:
             raise ValueError("spike_factor must exceed 1 and syn_ratio must be in (0, 1]")
         if self.rst_ratio > 1:
             raise ValueError("rst_ratio must be in (0, 1]")
+        if self.dns_long_query_length > 253:
+            raise ValueError("dns_long_query_length must not exceed 253")
         if not 1 <= self.scan_ports < self.max_ports_per_source <= 65536:
             raise ValueError("Require 1 <= scan_ports < max_ports_per_source <= 65536")
         if self.host_sweep_hosts > self.max_hosts_per_source:

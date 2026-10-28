@@ -8,6 +8,7 @@ from dataclasses import replace
 from pathlib import Path
 
 from scapy.all import ARP, ICMP, IP, TCP, UDP, IPv6, conf, get_if_list, sniff
+from scapy.layers.dns import DNS, DNSQR
 from scapy.layers.inet6 import _ICMPv6
 
 from flowguard.models import PacketMeta
@@ -25,6 +26,7 @@ def extract(packet) -> PacketMeta:
     sport = dport = None
     flags = 0
     icmp_type = None
+    dns_query_length = None
     if isinstance(network, (IP, IPv6)):
         source, destination = network.src, network.dst
         # Inspect only the outer network's transport; never label an ICMP error as its quoted TCP packet.
@@ -50,6 +52,13 @@ def extract(packet) -> PacketMeta:
             icmp_type = int(transport.type)
         else:
             protocol = f"IP-{number}"
+        # Inspect only the first question and retain its length, never its name.
+        # Scoping the lookup to the outer transport avoids quoted/nested packets.
+        if protocol in ("TCP", "UDP") and dport == 53 and isinstance(transport.payload, DNS):
+            dns = transport.payload
+            query = dns.getlayer(DNSQR) if int(dns.qr) == 0 else None
+            if query is not None:
+                dns_query_length = len(bytes(query.qname).rstrip(b"."))
     elif isinstance(network, ARP):
         source, destination, protocol = network.psrc, network.pdst, "ARP"
     return PacketMeta(
@@ -62,6 +71,7 @@ def extract(packet) -> PacketMeta:
         dport,
         flags,
         icmp_type,
+        dns_query_length,
     )
 
 

@@ -116,6 +116,17 @@ class Detector:
                     "Resolvers and busy clients can legitimately reach this threshold; payloads are not inspected.",
                     source=address,
                 )
+            if cfg.dns_long_query_packets and source.long_dns_queries >= cfg.dns_long_query_packets:
+                emit(
+                    "dns_tunnel_heuristic",
+                    source.long_dns_queries,
+                    cfg.dns_long_query_packets,
+                    f"{address} sent {source.long_dns_queries} DNS queries with names at least "
+                    f"{cfg.dns_long_query_length} characters long in {window.duration:g} seconds; "
+                    "investigate tunneling or unusual application-generated names. Query names are not retained, "
+                    "and long legitimate names can trigger this heuristic.",
+                    source=address,
+                )
             if len(source.ports) > cfg.scan_ports:
                 qualifier = "at least " if source.ports_truncated else ""
                 emit(

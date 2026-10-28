@@ -64,6 +64,15 @@ def test_dns_burst_threshold_direction_and_protocol():
     assert "dns_burst" not in names(aggregate([replace(request, protocol="TCP")] * 200))
 
 
+def test_dns_tunnel_heuristic_length_count_and_disable():
+    long_query = packet(protocol="UDP", destination_port=53, dns_query_length=70)
+    short_query = replace(long_query, dns_query_length=69)
+    assert "dns_tunnel_heuristic" not in names(aggregate([long_query] * 4 + [short_query] * 20))
+    assert "dns_tunnel_heuristic" in names(aggregate([long_query] * 5))
+    cfg = replace(Config(), dns_long_query_packets=0)
+    assert "dns_tunnel_heuristic" not in names(aggregate([long_query] * 10, cfg), cfg)
+
+
 @pytest.mark.parametrize("protocol,sport,flags", [("TCP", 443, 24), ("TCP", 443, 18), ("UDP", 53, 0)])
 def test_service_replies_preserve_metrics_without_port_alerts(protocol, sport, flags):
     replies = [
@@ -106,6 +115,8 @@ def test_new_rules_disable_and_cooldown_is_per_source():
         {"dns_burst_packets": True},
         {"ignore_service_replies": 1},
         {"host_sweep_hosts": 1.5},
+        {"dns_long_query_length": 254},
+        {"dns_long_query_packets": -1},
     ],
 )
 def test_new_config_validation(kwargs):

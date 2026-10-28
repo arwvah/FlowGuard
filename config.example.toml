@@ -33,3 +33,7 @@ icmp_echo_packets = 100
 # Zero rst_min_packets disables the rule; rst_ratio must be in (0, 1].
 rst_min_packets = 50
 rst_ratio = 0.8
+# Query names are measured but never retained. Five queries at least 70 characters
+# long from one source in a window trigger the heuristic. Zero packet count disables it.
+dns_long_query_length = 70
+dns_long_query_packets = 5

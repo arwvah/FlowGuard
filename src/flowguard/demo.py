@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-from scapy.all import GRE, ICMP, IP, TCP, UDP, Ether, IPv6, PcapWriter, Raw
+from scapy.all import DNS, DNSQR, GRE, ICMP, IP, TCP, UDP, Ether, IPv6, PcapWriter, Raw
 
 from flowguard.config import Config
 from flowguard.service import run
@@ -12,6 +12,7 @@ EPOCH = 1_700_000_000
 EXPECTED = {"packet_rate", "bandwidth", "port_scan", "syn_excess", "unexpected_protocol", "unexpected_port"}
 EXPECTED |= {"host_sweep", "suspicious_tcp_flags", "dns_burst"}
 EXPECTED |= {"icmp_echo_flood", "tcp_reset_burst"}
+EXPECTED |= {"dns_tunnel_heuristic"}
 
 
 def packet(index, kind):
@@ -44,6 +45,10 @@ def packet(index, kind):
     elif kind == "dns":
         network = IP(src="192.0.2.14", dst=destination)
         transport = UDP(sport=53000, dport=53)
+    elif kind == "dns_tunnel":
+        network = IP(src="192.0.2.17", dst=destination)
+        qname = f"{'a' * 60}.{'b' * 30}.example.test"
+        transport = UDP(sport=53000 + index, dport=53) / DNS(rd=1, qd=DNSQR(qname=qname))
     elif kind == "echo":
         network = IP(src="192.0.2.15", dst=destination)
         transport = ICMP(type=8)
@@ -75,12 +80,27 @@ def generate(directory):
         "scan": (["scan"], [45]),
         "syn": (["syn"], [80]),
         "unexpected": (["unexpected", "port"], [12, 12]),
-        "suspicious": (["sweep", "flags", "dns", "echo", "reset"], [20, 3, 200, 100, 50]),
+        "suspicious": (
+            ["sweep", "flags", "dns", "echo", "reset", "dns_tunnel"],
+            [20, 3, 200, 100, 50, 5],
+        ),
         "mixed": (
             ["normal"] * 2
             + ["spike"] * 3
-            + ["scan", "syn", "unexpected", "port", "normal", "sweep", "flags", "dns", "echo", "reset"],
-            [40, 40, 400, 400, 400, 45, 80, 12, 12, 40, 20, 3, 200, 100, 50],
+            + [
+                "scan",
+                "syn",
+                "unexpected",
+                "port",
+                "normal",
+                "sweep",
+                "flags",
+                "dns",
+                "echo",
+                "reset",
+                "dns_tunnel",
+            ],
+            [40, 40, 400, 400, 400, 45, 80, 12, 12, 40, 20, 3, 200, 100, 50, 5],
         ),
     }
     for index, (name, (kinds, counts)) in enumerate(recipes.items()):

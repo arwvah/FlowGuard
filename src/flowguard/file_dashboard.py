@@ -49,11 +49,13 @@ def render():
     with st.expander("Detection rules and settings"):
         st.write(
             "Enabled by default: port scans, host sweeps, SYN excess, suspicious TCP flags, DNS bursts, "
-            "ICMP echo floods, TCP reset bursts, and unexpected protocols/ports."
+            "long-DNS-query tunneling heuristics, ICMP echo floods, TCP reset bursts, and unexpected "
+            "protocols/ports."
         )
         st.caption(
             "Default thresholds per source / 10 seconds: >20 ports, 20 hosts, 40 SYNs at 80%, "
-            "3 suspicious flag packets, 200 DNS packets, 100 echo requests, 50 resets at 80%. "
+            "3 suspicious flag packets, 200 DNS packets, 5 DNS names at least 70 characters long, "
+            "100 echo requests, 50 resets at 80%. "
             "Port policy allows 53, 80, 443; tune it for your network."
         )
         settings = st.file_uploader("Optional rule configuration (TOML)", type=["toml"], key="capture_config")

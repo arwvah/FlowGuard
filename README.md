@@ -1,5 +1,7 @@
 # FlowGuard
 
+[![CI](https://github.com/arwvah/FlowGuard/actions/workflows/ci.yml/badge.svg)](https://github.com/arwvah/FlowGuard/actions/workflows/ci.yml)
+
 **Understand your traffic. Investigate what changes.**
 
 FlowGuard is a Python/Scapy network anomaly detector with explicit statistical learning, explainable alerts, SQLite persistence, and a dark Streamlit/Plotly investigation dashboard. Capture, analysis, and the dashboard run independently. Alerts are indicators requiring investigation, never proof of an attack.
@@ -14,7 +16,7 @@ Screenshots below show the running application using generated **synthetic demo 
 
 ## Highlights
 
-- **11 explainable detectors**: learned packet-rate and bandwidth anomalies, scans, SYN excess, unexpected protocols/ports, host sweeps, suspicious TCP flags, DNS bursts, ICMP echo floods, and TCP reset bursts.
+- **12 explainable detectors**: learned packet-rate and bandwidth anomalies, scans, SYN excess, unexpected protocols/ports, host sweeps, suspicious TCP flags, DNS bursts, long-query tunneling heuristics, ICMP echo floods, and TCP reset bursts.
 - **Two investigation workflows**: persistent traffic sessions in SQLite and an interactive PCAP/PCAPNG upload workspace.
 - **Evidence for each alert**: observed values, thresholds, severity, timestamps, and source metadata where available.
 - **Reproducible offline lab**: generate normal and anomalous captures without transmitting packets.
@@ -46,7 +48,7 @@ Open **http://127.0.0.1:8501**. The demo requires no capture privileges. For liv
 | `tests/` | Automated regression tests |
 | `config.example.toml` | Supported thresholds, allowlists, and resource limits |
 
-Validation on October 13, 2026: **128 tests passed**. The offline demo reported zero normal-traffic alerts and exercised all 11 detectors. This does not establish production detection accuracy.
+Validation on October 29, 2026: **132 tests passed**. The offline demo reported zero normal-traffic alerts and exercised all 12 detectors. This does not establish production detection accuracy.
 
 ## Omarchy desktop app
 
@@ -101,7 +103,7 @@ flowguard demo --output data/demo --db data/demo.sqlite
 flowguard dashboard --db data/demo.sqlite
 ```
 
-Open **http://127.0.0.1:8501**. Select the latest DEMO session. The demo writes deterministic normal, spike, scan, SYN, unexpected-protocol/port, suspicious-traffic, and combined classic PCAP files. It learns eight complete normal windows, checks normal traffic produces zero alerts, and verifies the combined capture triggers all eleven detectors: `packet_rate`, `bandwidth`, `port_scan`, `syn_excess`, `unexpected_protocol`, `unexpected_port`, `host_sweep`, `suspicious_tcp_flags`, `dns_burst`, `icmp_echo_flood`, and `tcp_reset_burst`. No packets are transmitted. Repeating the command creates new sessions and a new explicitly learned baseline; fixtures are overwritten deterministically.
+Open **http://127.0.0.1:8501**. Select the latest DEMO session. The demo writes deterministic normal, spike, scan, SYN, unexpected-protocol/port, suspicious-traffic, and combined classic PCAP files. It learns eight complete normal windows, checks normal traffic produces zero alerts, and verifies the combined capture triggers all twelve detectors: `packet_rate`, `bandwidth`, `port_scan`, `syn_excess`, `unexpected_protocol`, `unexpected_port`, `host_sweep`, `suspicious_tcp_flags`, `dns_burst`, `dns_tunnel_heuristic`, `icmp_echo_flood`, and `tcp_reset_burst`. No packets are transmitted. Repeating the command creates new sessions and a new explicitly learned baseline; fixtures are overwritten deterministically.
 
 Generate fixtures without analyzing them:
 
@@ -122,7 +124,7 @@ flowguard dashboard
 
 The file workspace includes packet/byte totals, protocol counts, traffic timelines, directional conversations, and suspicious-traffic findings with reasons and thresholds. Filter packets by protocol, source/destination text, port, or SYN/RST flags, then inspect a packet's metadata. Select a finding to restrict the packet preview to its source and time window. Export the analysis as JSON or filtered packets/alerts as CSV.
 
-All nine non-statistical traffic rules run without a baseline. Upload an optional TOML configuration under **Detection rules and settings** to tune thresholds and allowlists; `config.example.toml` lists the settings. The file workspace never trains on an uploaded capture or uses a live/demo database's baseline. The two learned rate/bandwidth rules are inactive here; use CLI analysis with a suitable baseline if needed.
+All ten non-statistical traffic rules run without a baseline. Upload an optional TOML configuration under **Detection rules and settings** to tune thresholds and allowlists; `config.example.toml` lists the settings. The file workspace never trains on an uploaded capture or uses a live/demo database's baseline. The two learned rate/bandwidth rules are inactive here; use CLI analysis with a suitable baseline if needed.
 
 Uploads are processed on the local FlowGuard server and held in the session; no packets are transmitted and no uploaded capture or report is written to SQLite. Results contain metadata, not payload bytes. Export results before closing/reloading the browser session. This provides packet investigation, not Wireshark's full protocol dissection, payload/hex view, or stream reassembly.
 
@@ -186,7 +188,7 @@ PCAP / live socket → ingest.py → PacketMeta → metrics.py → Window
 cli.py → service.py coordinates the pipeline; demo.py writes local fixtures.
 ```
 
-Ingestion decodes with Scapy and discards payloads after extracting timestamp, addresses, ports, protocol, wire size, TCP flags, and ICMP type. SQLite stores aggregate metadata, sessions/configuration, baselines, and alerts; it never stores packets or payloads. The locally generated demo PCAP files do contain synthetic payload bytes. The file workspace uses the same ingestion/aggregation/detection pipeline via `file_analysis.py`, with bounded metadata previews held in session memory and displayed by `file_dashboard.py`.
+Ingestion decodes with Scapy and discards payloads after extracting timestamp, addresses, ports, protocol, wire size, TCP flags, ICMP type, and DNS query-name length. DNS names themselves are never retained. SQLite stores aggregate metadata, sessions/configuration, baselines, and alerts; it never stores packets or payloads. The locally generated demo PCAP files do contain synthetic payload bytes. The file workspace uses the same ingestion/aggregation/detection pipeline via `file_analysis.py`, with bounded metadata previews held in session memory and displayed by `file_dashboard.py`.
 
 Each window records packet/byte rates, protocol distribution, destination-port counts, and bounded source counts. Offline processing is strictly event-time based and does not sleep to simulate replay. Windows align to epoch multiples of the configured duration. Entirely idle windows are omitted: gaps reset rate persistence, and learning models **active windows**, not average utilization over wall-clock time. There is no allocation or loop per second of an idle gap. First/last partial windows remain visible but are excluded from learning and sustained rate checks. Counts/rules may still alert in partial windows. Live capture flushes completed windows on a one-second heartbeat, even if traffic stops. SIGINT/SIGTERM flushes the partial window and closes the capture socket/database.
 
@@ -212,10 +214,11 @@ These rules operate without a baseline, aggregate separately for each source, an
 | `host_sweep` | Initial TCP SYNs to at least 20 distinct destination IPs | Possible host discovery; repeated SYNs to one host count once. Busy clients and legitimate discovery can trigger it. |
 | `suspicious_tcp_flags` | At least 3 packets with NULL, FIN-only, Xmas (FIN/PSH/URG without ACK), SYN+FIN, or SYN+RST flags | Possible probing or malformed traffic. Normal ACK, SYN/ACK, FIN/ACK, reset, and ECN SYN flags do not trigger this rule. |
 | `dns_burst` | At least 200 UDP packets to destination port 53 | Excessive DNS-like traffic. This counts packets, not decoded queries, and does not identify tunneling or inspect domain names. Busy resolvers may legitimately trigger it. |
+| `dns_tunnel_heuristic` | At least 5 decoded DNS queries with names at least 70 characters long | Possible tunneling or unusual generated names. FlowGuard retains only name lengths. CDNs, anti-abuse systems, and other legitimate software can use long names. |
 | `icmp_echo_flood` | At least 100 ICMPv4/v6 echo requests | Possible ping flooding or active diagnostics; echo replies and other ICMP messages do not count. |
 | `tcp_reset_burst` | At least 50 RST packets and at least 80% of that source's TCP traffic | Possible rejected connections, probing, or service failures. The source sends the resets; it is not necessarily the scanner. |
 
-Tune `host_sweep_hosts`, `tcp_flags_min_packets`, `dns_burst_packets`, `icmp_echo_packets`, `rst_min_packets`, and `rst_ratio` in `config.example.toml` for the capture location and workload. These five rules have medium severity; set their count threshold to zero to disable them (the reset ratio must remain in `(0, 1]`). The flag rules are local detection heuristics using the TCP control-bit definitions in [RFC 9293](https://www.rfc-editor.org/rfc/rfc9293.html), not proof that a sender is malicious. Encrypted DNS and DNS over TCP are outside the DNS burst rule's scope.
+Tune `host_sweep_hosts`, `tcp_flags_min_packets`, `dns_burst_packets`, `dns_long_query_length`, `dns_long_query_packets`, `icmp_echo_packets`, `rst_min_packets`, and `rst_ratio` in `config.example.toml` for the capture location and workload. These six rules have medium severity; set their count threshold to zero to disable them (the long-query length and reset ratio must remain valid). The flag rules are local detection heuristics using the TCP control-bit definitions in [RFC 9293](https://www.rfc-editor.org/rfc/rfc9293.html), not proof that a sender is malicious. Encrypted DNS is not visible; the burst rule is UDP-only, while the long-query heuristic evaluates decoded DNS queries on UDP or TCP port 53.
 
 Alerts record window-end timestamp, detector, severity, observed count/rate, threshold, baseline mean when applicable, reason, and source when applicable. Destination is null for rules aggregating across destinations. Cooldowns are keyed by detector/source or detector/unexpected protocol or port, use event time, and reset per session. After cooldown, a continuing condition can alert again. Rule severities: rate/bandwidth/SYN high; scan/allowlist medium; tracking-cap warning low.
 
@@ -235,7 +238,7 @@ ruff check src tests
 flowguard demo --output data/demo --db data/demo.sqlite
 ```
 
-Tests cover false positives, all demo detectors, persistence, cooldown expiry/isolation, idle gaps, baseline sample requirements and zero variance, payload-free metadata, IPv4/IPv6/ARP/ICMP, event-time repeatability, malformed PCAP/PCAPNG/configuration, PCAPNG byte orders/sections/interfaces/timestamps, bounded previews with full-capture detection, database retention, packet filters, and the Streamlit upload/error workflow. Live capture needs an appropriate interface and permissions; offline tests do not exercise a privileged socket.
+Tests cover false positives, all demo detectors, DNS length-only privacy, persistence, cooldown expiry/isolation, idle gaps, baseline sample requirements and zero variance, payload-free metadata, IPv4/IPv6/ARP/ICMP, event-time repeatability, malformed PCAP/PCAPNG/configuration, PCAPNG byte orders/sections/interfaces/timestamps, bounded previews with full-capture detection, database retention, packet filters, and the Streamlit upload/error workflow. CI runs lint/format checks and the suite on Python 3.11 and 3.13. Live capture needs an appropriate interface and permissions; offline tests do not exercise a privileged socket.
 
 ## Limitations
 

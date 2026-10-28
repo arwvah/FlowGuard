@@ -4,11 +4,26 @@ build-backend = "hatchling.build"
 
 [project]
 name = "flowguard"
-version = "1.0.0"
+version = "1.1.0"
 description = "Explainable network traffic anomaly detection with a reproducible offline lab"
 readme = "README.md"
 requires-python = ">=3.11"
+keywords = ["network-security", "pcap", "anomaly-detection", "scapy", "streamlit"]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Environment :: Console",
+  "Intended Audience :: Education",
+  "Intended Audience :: Information Technology",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "Topic :: Security",
+  "Topic :: System :: Networking :: Monitoring",
+]
 dependencies = ["scapy>=2.6,<3", "streamlit>=1.49,<2", "plotly>=6,<7", "pandas>=2.2,<4"]
+
+[project.urls]
+Repository = "https://github.com/arwvah/FlowGuard"
+Issues = "https://github.com/arwvah/FlowGuard/issues"
 
 [project.optional-dependencies]
 dev = ["pytest>=8,<10", "ruff>=0.11"]

@@ -28,7 +28,7 @@ def test_demo_all_detectors_normal_false_positives_and_no_baseline_contamination
     result = run_demo(tmp_path / "pcaps", db)
     assert set(result["detectors"]) == EXPECTED
     assert result["normal_alerts"] == 0
-    assert result["alerts"] == 11
+    assert result["alerts"] == len(EXPECTED)
     with sqlite3.connect(db) as connection:
         assert connection.execute("SELECT count(*) FROM baselines").fetchone()[0] == 1
         assert connection.execute("SELECT count(*) FROM sessions WHERE status='complete'").fetchone()[0] == 3
@@ -42,7 +42,7 @@ def test_replay_is_deterministic_and_failed_learning_preserves_baseline(fixtures
     first = run(cfg, db, pcap=fixtures / "normal.pcap", learning=True)
     a = run(cfg, db, pcap=fixtures / "mixed.pcap")
     b = run(cfg, db, pcap=fixtures / "mixed.pcap")
-    assert a.alerts == b.alerts == 11
+    assert a.alerts == b.alerts == len(EXPECTED)
     with sqlite3.connect(db) as connection:
 
         def rows(identifier):
@@ -139,8 +139,8 @@ def test_dashboard_renders_and_filters(tmp_path, monkeypatch):
     monkeypatch.setattr("sys.argv", ["dashboard.py", "--db", str(db)])
     app = AppTest.from_file(str(Path(flowguard.__file__).with_name("dashboard.py"))).run(timeout=30)
     assert not app.exception
-    assert [metric.value for metric in app.metric][-1] == "11"
-    assert len(app.dataframe[-1].value) == 11
+    assert [metric.value for metric in app.metric][-1] == str(len(EXPECTED))
+    assert len(app.dataframe[-1].value) == len(EXPECTED)
     app.multiselect[0].set_value(["high"]).run()
     assert not app.exception
     assert len(app.dataframe[-1].value) == 3
